@@ -1,0 +1,6 @@
+App.exe
+DocoptNet.*
+DocOptProvider.dll
+packages/
+paket-files/
+paket.exe
