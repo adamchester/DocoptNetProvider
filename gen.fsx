@@ -1,7 +1,8 @@
 #!/usr/bin/env fsharpi
 
 (** Load up/reference some things we'll be needing. *)
-#r @"packages/FAKE/tools/FakeLib.dll"
+#I @"packages/FAKE/tools/"
+#r @"FakeLib"
 open Fake
 open Fake.FscHelper
 
