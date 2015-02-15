@@ -1,5 +1,5 @@
 NUGET
-  remote: ./packages
+  remote: ./lib
   specs:
     docopt.net (0.6.2.0)
   remote: https://nuget.org/api/v2

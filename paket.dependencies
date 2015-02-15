@@ -1,4 +1,4 @@
-source ./packages/
+source ./lib/
 source https://nuget.org/api/v2
 
 nuget Fake
