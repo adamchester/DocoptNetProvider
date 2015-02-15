@@ -1,7 +1,9 @@
 NUGET
+  remote: ./packages
+  specs:
+    docopt.net (0.6.2.0)
   remote: https://nuget.org/api/v2
   specs:
-    docopt.net (0.6.1.6)
     FAKE (3.11.3)
 GITHUB
   remote: fsprojects/FSharp.TypeProviders.StarterPack

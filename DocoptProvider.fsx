@@ -1,7 +1,7 @@
 module Docopt
 
 #if INTERACTIVE
-#I @"packages\docopt.net\lib\net40"
+#I @"packages/docopt.net/lib/net40"
 #r "DocoptNet.dll"
 #load "paket-files/fsprojects/FSharp.TypeProviders.StarterPack/src/ProvidedTypes.fsi"
 #load "paket-files/fsprojects/FSharp.TypeProviders.StarterPack/src/ProvidedTypes.fs"
