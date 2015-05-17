@@ -1,6 +1,8 @@
 App.exe
+App.pdb
 DocoptNet.*
-DocOptProvider.dll
+DocoptProvider.dll
+DocoptProvider.pdb
 packages/
 paket-files/
 paket.exe

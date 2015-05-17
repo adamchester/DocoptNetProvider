@@ -1,5 +1,13 @@
 #!/usr/bin/env fsharpi
+(**
+exe compile with: fsc -o:app.exe --standalone -r:docoptnetprovider app.fsx
+**)
+printfn "now starting app..."
+
+#if INTERACTIVE
 #r @"./DocoptProvider.dll"
+#endif
+
 // This just tests things out a little for now.
 // Compile to an exe and pass "--myFlag" or whatever on the command line
 // to see what happens.
@@ -19,5 +27,7 @@ let cmdLineArgsWithoutExe =
   |> Seq.skip 1
   |> Seq.toArray
 
-theTest.Apply cmdLineArgsWithoutExe
-|> printfn "output: %A"
+let theResult = theTest.Apply cmdLineArgsWithoutExe
+theResult |> printfn "Apply returned: %+A"
+printfn "The return type: %+A" (theResult.GetType())
+

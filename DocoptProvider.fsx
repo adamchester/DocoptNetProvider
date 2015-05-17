@@ -1,4 +1,7 @@
 module Docopt
+(**
+compile with: fsc -a -o:docoptprovider.dll -r:docoptnet paket-files/fsprojects/FSharp.TypeProviders.StarterPack/src/ProvidedTypes.fs
+**)
 
 #if INTERACTIVE
 #I @"packages/docopt.net/lib/net40"
@@ -11,17 +14,19 @@ open System.Reflection
 open ProviderImplementation.ProvidedTypes
 open Microsoft.FSharp.Core.CompilerServices
 open Microsoft.FSharp.Quotations
+open DocoptNet
+open System.Collections.Generic
+
+// Disable incomplete matches warning
+// Incomplete matches are used extensively within this file
+// to simplify the code
+#nowarn "0025"
 
 [<AutoOpen>]
 module internal Provide =
     let inline xmlComment comment providedMember =
       (^a : (member AddXmlDocDelayed : (unit -> string) -> unit) providedMember, (fun () -> comment))
       providedMember
-
-// Disable incomplete matches warning
-// Incomplete matches are used extensively within this file
-// to simplify the code
-#nowarn "0025"
 
 [<TypeProvider>]
 type DocoptProvider (cfg : TypeProviderConfig) as this =
@@ -43,6 +48,8 @@ type DocoptProvider (cfg : TypeProviderConfig) as this =
                 let docoptDocString = args.[0] :?> string
                 let generatedCSharp = docopt.GenerateCode(docoptDocString)
 
+                printfn "now inside type provider..."
+
                 let g = ProvidedTypeDefinition(
                             asm,
                             ns,
@@ -59,30 +66,58 @@ type DocoptProvider (cfg : TypeProviderConfig) as this =
                 |> g.AddMember
 
                 let optInstanceType = ProvidedTypeDefinition(
-                                        asm, ns, "MyOptions", Some typeof<obj>, IsErased=false)
+                                        asm, ns, "MyOptions", baseType = Some typeof<obj>,
+                                        HideObjectMethods = true, IsErased=false)
+                
+                let theValuesField = ProvidedField("theValues", (typeof<IDictionary<string, ValueObject>>))
+                optInstanceType.AddMember theValuesField
 
+                let optInstanceParamDocoptValues = ProvidedParameter("values", typeof<IDictionary<string, ValueObject>>)
+
+                let optInstanceCtor = ProvidedConstructor([optInstanceParamDocoptValues],
+                                                          InvokeCode=(fun _ -> <@@ () @@> ))
+
+                optInstanceType.AddMember optInstanceCtor
+                
                 docopt.GetNodes(docoptDocString)
-                |> Seq.distinctBy (fun node -> node.Name)
+                |> Seq.map (fun m -> printfn "found parsed docopt node: %A" m; m)
+                |> Seq.distinctBy id
                 |> Seq.map (function
                     | :? DocoptNet.CommandNode as cmd ->
-                        ProvidedProperty(cmd.Name, typeof<bool>, GetterCode = (fun _ -> <@@ false @@>))
+                        ProvidedProperty(cmd.Name, typeof<bool>, GetterCode = (fun args -> <@@ Expr.FieldGet(%%args.[0], theValuesField) @@>))
                     | :? DocoptNet.OptionNode as opt ->
                         ProvidedProperty(opt.Name, typeof<bool>, GetterCode = (fun _ -> <@@ false @@>))
                     | :? DocoptNet.ArgumentNode as arg ->
                         ProvidedProperty(arg.Name, typeof<string>, GetterCode = (fun _ -> <@@ "test" @@>))
                     | n -> failwithf "unexpected node type %A" (n.GetType())
                 )
-                |> Seq.map (fun m -> printfn "generated property: %s" m.Name; m)
+                |> Seq.map (fun m -> printfn "generated %s property: %s" optInstanceType.Name (m.Name); m)
                 |> Seq.iter optInstanceType.AddMember
+                
                 tempAsm.AddTypes([optInstanceType])
 
                 ProvidedMethod("Apply", [ ProvidedParameter("cmdLineArgs", typeof<string[]>)], typeof<obj>, IsStaticMethod=true, InvokeCode =
                     (fun [ cmdLineArgs ] ->
                         <@@
                             let argv = (%%cmdLineArgs:string[])
-                            printfn "inside Apply, got argv: %A" argv
+                            printfn "inside DocoptProvider.Apply() now, got argv: %A" argv
                             let d = DocoptNet.Docopt()
-                            d.Apply (docoptDocString, argv, version="1", optionsFirst=true, exit=true)
+                            let values : IDictionary<string, DocoptNet.ValueObject> =
+                                d.Apply (docoptDocString, argv, version="1", optionsFirst=true, exit=false)
+                            printfn "still in DocoptProvider.Apply(), got docopt values: %A" values
+                            
+                            let allTypes = Assembly.GetExecutingAssembly().GetExportedTypes()
+                            let typesExclFSharp =
+                                allTypes
+                                |> Seq.filter (fun t -> not (t.FullName.StartsWith("Microsoft.FSharp")))
+                                |> Seq.toArray
+                            printfn "types in executing assembly: %A" typesExclFSharp
+                            
+                            let myOptionsTypeCtor =
+                                typesExclFSharp |> Seq.find (fun t -> t.FullName = "Docopt.MyOptions")
+                                |> (fun myOptionsType -> myOptionsType.GetConstructors() |> Seq.exactlyOne)
+
+                            myOptionsTypeCtor.Invoke([| values |])
                         @@>))
                 |> xmlComment "Parses the command line arguments."
                 |> g.AddMember

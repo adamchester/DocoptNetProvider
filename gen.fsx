@@ -24,6 +24,7 @@ Target "BuildProvider" (fun _ ->
     trace "Building the provider"
     sourceFiles
     |> Fsc (fun p -> { p with Output = "DocoptProvider.dll"
+                              Debug = true
                               FscTarget = Library
                               References = [ "DocoptNet.dll"] })
 )
@@ -32,8 +33,9 @@ Target "BuildProvider" (fun _ ->
 Target "BuildApp" (fun _ ->
     trace "Building the test app"
     [ "App.fsx" ]
-    |> Fsc (fun p -> { p with Output = "App.exe"; FscTarget = Exe;
-                              References = [ "DocoptProvider.dll"; "DocoptNet.dll"] })
+    |> Fsc (fun p -> { p with Output = "App.exe"; FscTarget = Exe; Debug = true
+                              References = [ "DocoptProvider.dll"; "DocoptNet.dll"]
+                              OtherParams = [ "--standalone" ] })
 )
 
 "CopyDocoptNetDll"
