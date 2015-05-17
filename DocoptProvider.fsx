@@ -44,10 +44,10 @@ type DocoptProvider (cfg : TypeProviderConfig) as this =
                 let generatedCSharp = docopt.GenerateCode(docoptDocString)
 
                 let g = ProvidedTypeDefinition(
-                            asm, 
-                            ns, 
-                            typeName, 
-                            Some typeof<obj>, 
+                            asm,
+                            ns,
+                            typeName,
+                            Some typeof<obj>,
                             IsErased = false)
 
                 ProvidedProperty("DocString", typeof<string>, IsStatic=true, GetterCode = (fun _ -> <@@ docoptDocString @@>))
@@ -76,23 +76,18 @@ type DocoptProvider (cfg : TypeProviderConfig) as this =
                 |> Seq.iter optInstanceType.AddMember
                 tempAsm.AddTypes([optInstanceType])
 
-                let doApplyImpl (argv:string[]) = System.String.Join(", ", argv)
-
                 ProvidedMethod("Apply", [ ProvidedParameter("cmdLineArgs", typeof<string[]>)], typeof<obj>, IsStaticMethod=true, InvokeCode =
                     (fun [ cmdLineArgs ] ->
                         <@@
                             let argv = (%%cmdLineArgs:string[])
                             printfn "inside Apply, got argv: %A" argv
-                            // Need to invoke some docopt.net code here... how?
-                            // docopt.Apply(...) // <-- causes error:
-                            // doApplyImpl argv // <-- causes error:
-                            // ..App.fsx (4,16)-(4,83) typecheck error The type provider 'Docopt+DocoptProvider' reported an error: unknown constant '<fun:doApplyImpl@92>' in generated method
-                            System.String.Join(", ", argv)
+                            let d = DocoptNet.Docopt()
+                            d.Apply (docoptDocString, argv, version="1", optionsFirst=true, exit=true)
                         @@>))
                 |> xmlComment "Parses the command line arguments."
                 |> g.AddMember
 
-                tempAsm.AddTypes [g]                
+                tempAsm.AddTypes [g]
                 g
             )
 
@@ -103,4 +98,3 @@ type DocoptProvider (cfg : TypeProviderConfig) as this =
 
 [<assembly:TypeProviderAssembly>]
 do ()
-
